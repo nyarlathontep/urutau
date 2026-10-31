@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DevForum — Entrar</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="auth-page">
+  <main class="auth-card">
+    <h1>DevForum</h1>
+    <p class="subtitle">Comunidade de programação</p>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="login" type="button">Entrar</button>
+      <button class="tab" data-tab="register" type="button">Criar conta</button>
+    </div>
+
+    <form id="auth-form" novalidate>
+      <label>Nome de usuário
+        <input name="username" autocomplete="username" minlength="3" maxlength="20" required>
+      </label>
+      <label>Senha
+        <input name="password" type="password" autocomplete="current-password" minlength="6" required>
+      </label>
+
+      <p id="auth-error" class="error" hidden></p>
+      <button type="submit" id="submit-btn" class="primary">Entrar</button>
+    </form>
+
+    <p class="hint">Demonstração: <strong>ana</strong> / <strong>senha123</strong></p>
+  </main>
+  <script src="/js/auth.js"></script>
+</body>
+</html>
