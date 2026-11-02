@@ -22,6 +22,7 @@ body {
   color: var(--text);
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
   line-height: 1.5;
+  zoom: 0.75;
 }
 
 /* ---------- Auth ---------- */
