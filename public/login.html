@@ -4,6 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DevForum — Entrar</title>
+  <script>
+(function () {
+  try {
+    var theme = localStorage.getItem('devforum_theme') || 'dark';
+    if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
+    var zoom = parseFloat(localStorage.getItem('devforum_fontscale'));
+    if (zoom) document.documentElement.style.setProperty('--zoom', zoom);
+  } catch (e) {}
+})();
+</script>
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body class="auth-page">

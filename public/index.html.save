@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DevForum — Início</title>
+  <script>
+(function () {
+  try {
+    var theme = localStorage.getItem('devforum_theme') || 'dark';
+    if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
+    var zoom = parseFloat(localStorage.getItem('devforum_fontscale'));
+    if (zoom) document.documentElement.style.setProperty('--zoom', zoom);
+  } catch (e) {}
+})();
+   </script>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">DevForum</div>
+    <div class="user-area">
+      <span id="current-user"></span>
+      <button id="logout-btn" class="ghost" type="button">Sair</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="toolbar">
+      <div class="chips">
+        <button class="chip active" data-filter="all" type="button">Todos</button>
+        <button class="chip" data-filter="public" type="button">Públicos</button>
+        <button class="chip" data-filter="mine" type="button">Meus tópicos</button>
+      </div>
+      <button id="new-topic-btn" class="primary" type="button">+ Novo tópico</button>
+    </section>
+
+    <form id="topic-form" class="card hidden">
+      <h2>Criar tópico</h2>
+      <label>Título
+        <input name="title" maxlength="120" required>
+      </label>
+      <label>Conteúdo
+        <textarea name="body" rows="4" maxlength="5000" required></textarea>
+      </label>
+      <label>Visibilidade
+        <select name="visibility">
+          <option value="public">Público</option>
+          <option value="private">Privado (só você vê)</option>
+        </select>
+      </label>
+      <p id="topic-error" class="error" hidden></p>
+      <div class="row">
+        <button type="submit" class="primary">Publicar</button>
+        <button type="button" id="cancel-topic" class="ghost">Cancelar</button>
+      </div>
+    </form>
+
+    <p id="empty" class="empty hidden">Nenhum tópico por aqui ainda. Crie o primeiro!</p>
+    <div id="topics" class="topics"></div>
+  </main>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>

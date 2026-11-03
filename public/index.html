@@ -4,17 +4,81 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DevForum — Início</title>
+  <script>
+(function () {
+  try {
+    var theme = localStorage.getItem('devforum_theme') || 'dark';
+    if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
+    var zoom = parseFloat(localStorage.getItem('devforum_fontscale'));
+    if (zoom) document.documentElement.style.setProperty('--zoom', zoom);
+  } catch (e) {}
+})();
+</script>
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
+<div class="app-scale">
   <header class="topbar">
+  <div class="topbar-left">
+    <button id="sidebar-toggle" class="icon-btn" type="button"
+            aria-label="Abrir menu" aria-expanded="false">☰</button>
     <div class="brand">DevForum</div>
-    <div class="user-area">
-      <span id="current-user"></span>
-      <button id="logout-btn" class="ghost" type="button">Sair</button>
-    </div>
-  </header>
+  </div>
+  <div class="user-area">
+    <span id="current-user"></span>
+    <button id="logout-btn" class="ghost" type="button">Sair</button>
+  </div>
+ </header>
+</div>
+<!-- Overlay + Sidebar -->
+<div id="sidebar-overlay" class="sidebar-overlay" hidden></div>
 
+<aside id="sidebar" class="sidebar" aria-hidden="true">
+  <div class="sidebar-header">
+    <h2>Menu</h2>
+    <button id="sidebar-close" class="icon-btn" type="button" aria-label="Fechar menu">✕</button>
+  </div>
+
+  <nav class="sidebar-nav">
+    <button class="sidebar-item active" data-view="profile" type="button">
+      <span class="sidebar-icon">👤</span> Meu perfil
+    </button>
+    <button class="sidebar-item" data-view="settings" type="button">
+      <span class="sidebar-icon">⚙️</span> Configurações
+    </button>
+  </nav>
+
+  <div id="view-profile" class="sidebar-view">
+    <div class="profile-card">
+      <div class="avatar" id="profile-avatar">?</div>
+      <div class="profile-info">
+        <strong id="profile-username">—</strong>
+        <small id="profile-stats">—</small>
+      </div>
+    </div>
+  </div>
+
+  <div id="view-settings" class="sidebar-view" hidden>
+    <div class="setting-group">
+      <label for="theme-select">Tema</label>
+      <select id="theme-select">
+        <option value="dark">Padrão (escuro)</option>
+        <option value="light">Claro</option>
+      </select>
+    </div>
+
+    <div class="setting-group">
+      <label for="font-size-range">Tamanho da fonte</label>
+      <div class="range-row">
+        <input type="range" id="font-size-range" min="0.6" max="1.2" step="0.05" value="0.75">
+        <output id="font-size-value">75%</output>
+      </div>
+    </div>
+
+    <button id="reset-settings" class="ghost" type="button">Restaurar padrões</button>
+  </div>
+</aside>
+<div class="app-scale">
   <main class="layout">
     <section class="toolbar">
       <div class="chips">
@@ -49,7 +113,7 @@
     <p id="empty" class="empty hidden">Nenhum tópico por aqui ainda. Crie o primeiro!</p>
     <div id="topics" class="topics"></div>
   </main>
-
+</div>
   <script src="/js/app.js"></script>
 </body>
 </html>
