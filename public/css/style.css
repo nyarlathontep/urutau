@@ -338,3 +338,20 @@ button { font: inherit; cursor: pointer; border: 0; border-radius: 8px; }
   .sidebar { width: 300px; }
   .brand { font-size: 14px; }
 }
+/* === Correção forçada da sidebar (temporária) === */
+body > #sidebar,
+body > #sidebar-overlay {
+  position: fixed !important;
+}
+
+body > #sidebar {
+  top: 0 !important;
+  left: 0 !important;
+  height: 100vh !important;
+  z-index: 2147483647 !important;
+}
+
+body > #sidebar-overlay {
+  inset: 0 !important;
+  z-index: 2147483646 !important;
+}
