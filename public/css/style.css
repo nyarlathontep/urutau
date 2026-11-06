@@ -40,9 +40,7 @@ body {
 }
 
 /* ---------- Auth ---------- */
-.app-scale {
-  zoom: var(--zoom, 0.75);
-}
+.app-scale { zoom: var(--zoom, 0.75); }
 
 .auth-page { display: grid; place-items: center; min-height: 100vh; padding: 24px; }
 
@@ -354,4 +352,51 @@ body > #sidebar {
 body > #sidebar-overlay {
   inset: 0 !important;
   z-index: 2147483646 !important;
+}
+/* ============================================
+   Banner de visitante
+   ============================================ */
+.guest-banner {
+  max-width: 900px;
+  margin: 16px auto 0;
+  padding: 10px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.guest-banner a {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+.guest-banner a:hover { text-decoration: underline; }
+
+/* CTA quando o visitante tenta responder */
+.reply-cta {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.reply-cta a {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+.reply-cta a:hover { text-decoration: underline; }
+
+/* Visitante: score continua visível, botões de voto somem */
+body.is-anonymous .vote { display: none; }
+
+/* Link "Entrar" no topo herda estilo de botão ghost */
+a.ghost {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
 }

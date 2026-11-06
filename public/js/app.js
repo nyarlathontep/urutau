@@ -37,6 +37,14 @@ async function api(path, options = {}) {
     ...options,
     headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }
   });
+
+  // Sessão expirou durante uma ação real (votar, responder, postar)
+  // Só redireciona quando NÃO é a checagem inicial de identidade
+  if (res.status === 401 && path !== '/api/auth/me') {
+    window.location.href = '/login.html';
+    throw new Error('Sessão expirada. Faça login novamente.');
+  }
+
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
     const err = new Error(json.error || 'Erro inesperado');
@@ -54,46 +62,71 @@ async function api(path, options = {}) {
     const data = await api('/api/auth/me');
     state.user = data.user;
   } catch (err) {
-    if (err.status === 401) { window.location.href = '/login.html'; return; }
-    throw err;
+    if (err.status === 401) {
+      state.user = null; // ← visitante — NÃO redireciona
+    } else {
+      throw err;
+    }
   }
-  $('#current-user').textContent = '@' + state.user.username;
 
-  // ← NOVO: garante preferências aplicadas mesmo se o inline script falhou
+  const isGuest = !state.user;
+
+  if (isGuest) {
+    document.body.classList.add('is-anonymous');
+    document.getElementById('guest-banner')?.classList.remove('hidden');
+    document.getElementById('login-link')?.classList.remove('hidden');
+    document.getElementById('logout-btn')?.classList.add('hidden');
+    document.getElementById('new-topic-btn')?.classList.add('hidden');
+    document.querySelector('[data-filter="mine"]')?.classList.add('hidden');
+    document.getElementById('current-user').textContent = '';
+  } else {
+    document.getElementById('current-user').textContent = '@' + state.user.username;
+  }
+
+  // Preferências (tema + fonte) valem para todos
   applyTheme(localStorage.getItem(THEME_KEY) || DEFAULT_THEME);
   applyFontScale(parseFloat(localStorage.getItem(FONT_KEY)) || DEFAULT_FONT);
 
-  // ← NOVO: monta a sidebar antes de carregar tópicos (hamburger já funciona)
   setupSidebar();
-
   await refresh();
 })();
 
 async function refresh() {
   state.topics = await api('/api/topics');
   renderTopics();
-  updateProfileStats(); // ← NOVO
+  updateProfileStats();
 }
-
 // ==========================================================
 // Renderização
 // ==========================================================
 function renderTopics() {
   const container = $('#topics');
+  const isGuest = !state.user;
+
   const list = state.topics.filter((t) => {
     if (state.filter === 'public') return t.visibility === 'public';
-    if (state.filter === 'mine') return t.author === state.user.username;
+    if (state.filter === 'mine') return !isGuest && t.author === state.user.username;
     return true;
   });
 
-  $('#empty').classList.toggle('hidden', list.length > 0); // ← corrigido do bug anterior
+  $('#empty').classList.toggle('hidden', list.length > 0);
   container.innerHTML = list.map(topicCard).join('');
 }
 
 // topicCard() permanece exatamente igual
 function topicCard(t) {
-  const pinned = t.pinned ? '<span class="badge pinned">Fixado</span>' : '';
-  const priv = t.visibility === 'private' ? '<span class="badge private">Privado</span>' : '';
+  const isGuest = !state.user;
+  const pinned  = t.pinned ? '<span class="badge pinned">Fixado</span>' : '';
+  const priv    = t.visibility === 'private' ? '<span class="badge private">Privado</span>' : '';
+
+  // Bloco de voto — só para logados
+  const votesHtml = isGuest
+    ? `<div class="votes"><span class="score">${t.score}</span></div>`
+    : `<div class="votes">
+         <button class="vote up ${t.myVote === 1 ? 'active' : ''}" data-vote="1" title="Votar a favor">▲</button>
+         <span class="score">${t.score}</span>
+         <button class="vote down ${t.myVote === -1 ? 'active' : ''}" data-vote="-1" title="Votar contra">▼</button>
+       </div>`;
 
   const repliesHtml = t.replies.length
     ? `<ul>${t.replies.map((r) => `
@@ -104,13 +137,17 @@ function topicCard(t) {
       </ul>`
     : '<p class="meta" style="margin-top:8px">Sem respostas ainda.</p>';
 
+  // Formulário de resposta só para logados; visitante vê CTA
+  const replyFormHtml = isGuest
+    ? `<p class="reply-cta"><a href="/login.html">Entre</a> para responder este tópico.</p>`
+    : `<form class="reply-form">
+         <input name="body" placeholder="Escreva uma resposta..." maxlength="1000" required>
+         <button type="submit" class="primary small">Responder</button>
+       </form>`;
+
   return `
   <article class="topic card" data-id="${t.id}">
-    <div class="votes">
-      <button class="vote up ${t.myVote === 1 ? 'active' : ''}" data-vote="1" title="Votar a favor">▲</button>
-      <span class="score">${t.score}</span>
-      <button class="vote down ${t.myVote === -1 ? 'active' : ''}" data-vote="-1" title="Votar contra">▼</button>
-    </div>
+    ${votesHtml}
     <div class="topic-main">
       <header class="topic-head">
         ${pinned}${priv}
@@ -125,10 +162,7 @@ function topicCard(t) {
       <details class="replies">
         <summary>Respostas (${t.replies.length})</summary>
         ${repliesHtml}
-        <form class="reply-form">
-          <input name="body" placeholder="Escreva uma resposta..." maxlength="1000" required>
-          <button type="submit" class="primary small">Responder</button>
-        </form>
+        ${replyFormHtml}
       </details>
     </div>
   </article>`;
@@ -205,14 +239,21 @@ function setupSidebar() {
 
 // ← NOVO: estatísticas no perfil
 function updateProfileStats() {
-  if (!state.user) return;
   const avatar = document.getElementById('profile-avatar');
   const uname  = document.getElementById('profile-username');
   const stats  = document.getElementById('profile-stats');
+
+  if (!state.user) {
+    if (avatar) avatar.textContent = '?';
+    if (uname)  uname.textContent  = 'Visitante';
+    if (stats)  stats.textContent  = 'Entre para ver seu perfil';
+    return;
+  }
+
   if (avatar) avatar.textContent = state.user.username.charAt(0).toUpperCase();
   if (uname)  uname.textContent  = '@' + state.user.username;
   if (stats) {
-    const myTopics = state.topics.filter((t) => t.author === state.user.username).length;
+    const myTopics  = state.topics.filter((t) => t.author === state.user.username).length;
     const myReplies = state.topics.reduce(
       (acc, t) => acc + t.replies.filter((r) => r.author === state.user.username).length, 0
     );
