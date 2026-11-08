@@ -10,7 +10,7 @@ const FONT_KEY  = 'devforum_fontscale';
 const DEFAULT_THEME = 'dark';
 const DEFAULT_FONT  = 0.75;
 
-const state = { user: null, filter: 'all', topics: [] };
+const state = { user: null, visibility: 'all', tag: 'all', topics: [], tags: [] };
 
 // ← NOVO: aplica tema em <html data-theme="light"> e persiste
 function applyTheme(theme) {
@@ -92,10 +92,17 @@ async function api(path, options = {}) {
 })();
 
 async function refresh() {
-  state.topics = await api('/api/topics');
+  const [topics, tags] = await Promise.all([
+    api('/api/topics'),
+    api('/api/tags')
+  ]);
+  state.topics = topics;
+  state.tags = tags;
   renderTopics();
+  renderTagChips();
   updateProfileStats();
 }
+
 // ==========================================================
 // Renderização
 // ==========================================================
@@ -104,8 +111,9 @@ function renderTopics() {
   const isGuest = !state.user;
 
   const list = state.topics.filter((t) => {
-    if (state.filter === 'public') return t.visibility === 'public';
-    if (state.filter === 'mine') return !isGuest && t.author === state.user.username;
+    if (state.visibility === 'public' && t.visibility !== 'public') return false;
+    if (state.visibility === 'mine' && (isGuest || t.author !== state.user.username)) return false;
+    if (state.tag !== 'all' && !(t.tags || []).includes(state.tag)) return false;
     return true;
   });
 
@@ -113,13 +121,34 @@ function renderTopics() {
   container.innerHTML = list.map(topicCard).join('');
 }
 
-// topicCard() permanece exatamente igual
+function renderTagChips() {
+  const container = document.getElementById('tag-chips');
+  if (!container) return;
+
+  let html = `<button class="chip tag-chip ${state.tag === 'all' ? 'active' : ''}" data-tag="all" type="button">🏷️ Todas</button>`;
+
+  for (const t of state.tags) {
+    const active = state.tag === t.name ? 'active' : '';
+    html += `<button class="chip tag-chip ${active}" data-tag="${esc(t.name)}" type="button">
+      #${esc(t.name)} <span class="tag-count">${t.count}</span>
+    </button>`;
+  }
+
+  container.innerHTML = html;
+}
+
 function topicCard(t) {
   const isGuest = !state.user;
   const pinned  = t.pinned ? '<span class="badge pinned">Fixado</span>' : '';
   const priv    = t.visibility === 'private' ? '<span class="badge private">Privado</span>' : '';
 
-  // Bloco de voto — só para logados
+  // ← NOVO
+  const tagsHtml = (t.tags || []).length
+    ? `<div class="topic-tags">${t.tags.map(tag =>
+        `<span class="tag-pill" data-tag="${esc(tag)}" role="button" tabindex="0">#${esc(tag)}</span>`
+      ).join('')}</div>`
+    : '';
+
   const votesHtml = isGuest
     ? `<div class="votes"><span class="score">${t.score}</span></div>`
     : `<div class="votes">
@@ -137,7 +166,6 @@ function topicCard(t) {
       </ul>`
     : '<p class="meta" style="margin-top:8px">Sem respostas ainda.</p>';
 
-  // Formulário de resposta só para logados; visitante vê CTA
   const replyFormHtml = isGuest
     ? `<p class="reply-cta"><a href="/login.html">Entre</a> para responder este tópico.</p>`
     : `<form class="reply-form">
@@ -153,6 +181,7 @@ function topicCard(t) {
         ${pinned}${priv}
         <h3>${esc(t.title)}</h3>
       </header>
+      ${tagsHtml}
       <p class="body">${esc(t.body)}</p>
       <footer class="meta">
         <span>por @${esc(t.author)}</span>
@@ -292,14 +321,15 @@ $('#topics').addEventListener('submit', async (e) => {
   } catch (err) { alert(err.message); }
 });
 
-document.querySelectorAll('.chip').forEach((chip) => {
+ document.querySelectorAll('.chip[data-filter]').forEach((chip) => {
   chip.addEventListener('click', () => {
-    document.querySelectorAll('.chip').forEach((c) => c.classList.toggle('active', c === chip));
-    state.filter = chip.dataset.filter;
+    document.querySelectorAll('.chip[data-filter]')
+      .forEach((c) => c.classList.toggle('active', c === chip));
+    state.visibility = chip.dataset.filter;
     renderTopics();
     updateProfileStats();
   });
-});
+ });
 
 $('#new-topic-btn').addEventListener('click', () => $('#topic-form').classList.toggle('hidden'));
 $('#cancel-topic').addEventListener('click', () => $('#topic-form').classList.add('hidden'));
@@ -309,13 +339,20 @@ $('#topic-form').addEventListener('submit', async (e) => {
   const fd = new FormData(e.target);
   const errEl = $('#topic-error');
   errEl.hidden = true;
+
+  const tags = String(fd.get('tags') || '')
+    .split(',')
+    .map((t) => t.trim())
+    .filter(Boolean);
+
   try {
     await api('/api/topics', {
       method: 'POST',
       body: JSON.stringify({
         title: fd.get('title'),
         body: fd.get('body'),
-        visibility: fd.get('visibility')
+        visibility: fd.get('visibility'),
+        tags
       })
     });
     e.target.reset();
@@ -330,4 +367,30 @@ $('#topic-form').addEventListener('submit', async (e) => {
 $('#logout-btn').addEventListener('click', async () => {
   await api('/api/auth/logout', { method: 'POST' }).catch(() => {});
   window.location.href = '/login.html';
+});
+// Filtro por tag no toolbar
+document.getElementById('tag-chips')?.addEventListener('click', (e) => {
+  const chip = e.target.closest('[data-tag]');
+  if (!chip) return;
+  state.tag = chip.dataset.tag;
+  renderTagChips();
+  renderTopics();
+});
+
+// Clique numa tag dentro de um card → aplica o filtro
+$('#topics').addEventListener('click', (e) => {
+  const pill = e.target.closest('.tag-pill');
+  if (!pill) return;
+  state.tag = pill.dataset.tag;
+  renderTagChips();
+  renderTopics();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+// Acessibilidade: Enter/Espaço no tag-pill focado
+$('#topics').addEventListener('keydown', (e) => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.tag-pill')) {
+    e.preventDefault();
+    e.target.click();
+  }
 });

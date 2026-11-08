@@ -94,6 +94,13 @@
       </div>
       <button id="new-topic-btn" class="primary" type="button">+ Novo tópico</button>
     </section>
+    
+    <section class="toolbar toolbar-tags">
+      <div class="chips" id="tag-chips">
+        <button class="chip tag-chip active" data-tag="all" type="button">🏷️ Todas</button>
+        <!-- chips de tag injetadas dinamicamente por app.js -->
+      </div>
+    </section>
 
     <form id="topic-form" class="card hidden">
       <h2>Criar tópico</h2>
@@ -109,6 +116,11 @@
           <option value="private">Privado (só você vê)</option>
         </select>
       </label>
+
+      <label>Tags (opcional, até 5 separadas por vírgula)
+        <input name="tags" placeholder="javascript, react, node" maxlength="120">
+      </label>
+
       <p id="topic-error" class="error" hidden></p>
       <div class="row">
         <button type="submit" class="primary">Publicar</button>

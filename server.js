@@ -263,6 +263,46 @@ app.get('/api/auth/me', requireAuth, (req, res) => {
 // Tópicos
 // ==========================================================
 const scoreOf = (t) => t.upvotes.length - t.downvotes.length + t.replies.length;
+// Normaliza uma tag: lowercase, espaços viram hífen, 2–20 chars, [a-z0-9-]
+function normalizeTag(raw) {
+  const t = String(raw || '').trim().toLowerCase().replace(/\s+/g, '-');
+  if (t.length < 2 || t.length > 20) return null;
+  if (!/^[a-z0-9-]+$/.test(t)) return null;
+  return t;
+}
+
+function parseTagsInput(input) {
+  const arr = Array.isArray(input)
+    ? input
+    : typeof input === 'string' ? input.split(',') : [];
+  const seen = new Set();
+  const out = [];
+  for (const raw of arr) {
+    const t = normalizeTag(raw);
+    if (t && !seen.has(t)) { seen.add(t); out.push(t); }
+    if (out.length >= 5) break; // máx 5 tags
+  }
+  return out;
+}
+
+app.get('/api/tags', (req, res) => {
+  const me = req.session.username || null;
+  const topics = readJSON(TOPICS_FILE)
+    .filter(t => t.visibility === 'public' || t.author === me);
+
+  const counts = {};
+  for (const t of topics) {
+    for (const tag of (t.tags || [])) {
+      counts[tag] = (counts[tag] || 0) + 1;
+    }
+  }
+
+  const list = Object.entries(counts)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+
+  res.json(list);
+});
 
 app.get('/api/topics', (req, res) => {
   const me = req.session.username || null;
@@ -275,6 +315,7 @@ app.get('/api/topics', (req, res) => {
       author: t.author,
       visibility: t.visibility,
       pinned: !!t.pinned,
+      tags: parseTagsInput(t.tags), // ← NOVO
       upvotes: t.upvotes.length,
       downvotes: t.downvotes.length,
       score: scoreOf(t),
@@ -294,7 +335,7 @@ app.get('/api/topics', (req, res) => {
 });
 
 app.post('/api/topics', requireAuth, (req, res) => {
-  const { title, body, visibility } = req.body || {};
+  const { title, body, visibility, tags } = req.body || {};
   const t = String(title || '').trim();
   const b = String(body || '').trim();
   const vis = visibility === 'private' ? 'private' : 'public';
@@ -311,7 +352,8 @@ app.post('/api/topics', requireAuth, (req, res) => {
     body: b,
     author: req.session.username,
     visibility: vis,
-    pinned: false, // fixar seria papel de moderador
+    pinned: false,
+    tags: parseTagsInput(tags), // ← NOVO
     upvotes: [],
     downvotes: [],
     replies: [],
